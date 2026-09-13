@@ -305,6 +305,7 @@
                     </select>
                 </div>
                 <div class="fg"><label class="flbl" for="msg">Mensaje (opcional)</label><textarea class="fta" id="msg" name="mensaje" placeholder="¿Preguntas o comentarios?" maxlength="1000"></textarea></div>
+                <div class="fg"><div class="h-captcha" data-captcha="true" data-theme="dark"></div></div>
                 <button type="submit" class="fsub">Enviar Inscripción →</button>
             </form>
         </div>
@@ -449,29 +450,34 @@ document.getElementById('bform').addEventListener('submit', async e => {
     const originalText = btn.textContent;
     const originalStyle = btn.style.cssText;
 
+    const showError = message => {
+        btn.textContent = message;
+        btn.style.cssText += ';background:#8A2A2A;clip-path:none';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.cssText = originalStyle;
+        }, 4000);
+    };
+
     // Trim stray whitespace before it goes anywhere.
     ['nombre', 'telefono', 'email', 'mensaje'].forEach(field => {
         form[field].value = form[field].value.trim();
     });
 
     if (looksLikeSpam(form)) {
-        btn.textContent = 'Error al enviar, intenta de nuevo';
-        btn.style.cssText += ';background:#8A2A2A;clip-path:none';
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.cssText = originalStyle;
-        }, 4000);
+        showError('Error al enviar, intenta de nuevo');
+        return;
+    }
+
+    const captchaField = form.querySelector('[name="h-captcha-response"]');
+    if (!captchaField || !captchaField.value) {
+        showError('Por favor completa el captcha');
         return;
     }
 
     const lastSent = Number(localStorage.getItem('bformLastSent') || 0);
     if (Date.now() - lastSent < 20000) {
-        btn.textContent = 'Espera unos segundos antes de reenviar';
-        btn.style.cssText += ';background:#8A2A2A;clip-path:none';
-        setTimeout(() => {
-            btn.textContent = originalText;
-            btn.style.cssText = originalStyle;
-        }, 4000);
+        showError('Espera unos segundos antes de reenviar');
         return;
     }
 
@@ -489,6 +495,7 @@ document.getElementById('bform').addEventListener('submit', async e => {
             btn.textContent = '¡Inscripción enviada! Te contactamos pronto.';
             btn.style.cssText += ';background:#2A6A2A;clip-path:none';
             form.reset();
+            if (window.hcaptcha) { try { hcaptcha.reset(); } catch (e) {} }
         } else {
             throw new Error(data.message || 'Error al enviar');
         }
@@ -543,5 +550,6 @@ igScript.src = 'https://www.instagram.com/embed.js';
 document.body.appendChild(igScript);
 </script>
 
+<script src="https://web3forms.com/client/script.js" async defer></script>
 
 </body></html>
