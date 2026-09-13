@@ -290,10 +290,10 @@
                 <input type="hidden" name="from_name" value="Formulario Web - Escuelita Off Road">
                 <input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off">
                 <div class="fgrid">
-                    <div class="fg"><label class="flbl" for="nom">Nombre completo</label><input class="fi" type="text" id="nom" name="nombre" placeholder="Tu nombre" required=""></div>
-                    <div class="fg"><label class="flbl" for="tel">Teléfono</label><input class="fi" type="tel" id="tel" name="telefono" placeholder="+56 9 9134 8229"></div>
+                    <div class="fg"><label class="flbl" for="nom">Nombre completo</label><input class="fi" type="text" id="nom" name="nombre" placeholder="Tu nombre" maxlength="100" required=""></div>
+                    <div class="fg"><label class="flbl" for="tel">Teléfono</label><input class="fi" type="tel" id="tel" name="telefono" placeholder="+56 9 9134 8229" maxlength="25"></div>
                 </div>
-                <div class="fg"><label class="flbl" for="eml">Correo electrónico</label><input class="fi" type="email" id="eml" name="email" placeholder="tu@email.com" required=""></div>
+                <div class="fg"><label class="flbl" for="eml">Correo electrónico</label><input class="fi" type="email" id="eml" name="email" placeholder="tu@email.com" maxlength="150" required=""></div>
                 <div class="fg">
                     <label class="flbl" for="cur">Curso de interés</label>
                     <select class="fs" id="cur" name="curso">
@@ -304,7 +304,7 @@
                         <option value="empresas">Curso Empresas / Grupos</option>
                     </select>
                 </div>
-                <div class="fg"><label class="flbl" for="msg">Mensaje (opcional)</label><textarea class="fta" id="msg" name="mensaje" placeholder="¿Preguntas o comentarios?"></textarea></div>
+                <div class="fg"><label class="flbl" for="msg">Mensaje (opcional)</label><textarea class="fta" id="msg" name="mensaje" placeholder="¿Preguntas o comentarios?" maxlength="1000"></textarea></div>
                 <button type="submit" class="fsub">Enviar Inscripción →</button>
             </form>
         </div>
@@ -422,12 +422,59 @@ const cobs = new IntersectionObserver(entries => {
 document.querySelectorAll('[data-target]').forEach(el => cobs.observe(el));
 
 // Form
+const bformLoadedAt = Date.now();
+const SUSPICIOUS_PATTERN = /<\s*(script|iframe|object|embed|svg)\b|javascript\s*:|on\w+\s*=/i;
+const MAX_LINKS_ALLOWED = 3;
+
+function looksLikeSpam(form) {
+    // Honeypot: real visitors never see or check this field.
+    if (form.querySelector('[name="botcheck"]').checked) return true;
+    // Submitted too fast to be a human filling the form.
+    if (Date.now() - bformLoadedAt < 3000) return true;
+
+    const nombre = form.nombre.value;
+    const mensaje = form.mensaje.value;
+    if (SUSPICIOUS_PATTERN.test(nombre) || SUSPICIOUS_PATTERN.test(mensaje)) return true;
+
+    const linkCount = (mensaje.match(/https?:\/\//gi) || []).length;
+    if (linkCount > MAX_LINKS_ALLOWED) return true;
+
+    return false;
+}
+
 document.getElementById('bform').addEventListener('submit', async e => {
     e.preventDefault();
     const form = e.target;
     const btn = form.querySelector('.fsub');
     const originalText = btn.textContent;
     const originalStyle = btn.style.cssText;
+
+    // Trim stray whitespace before it goes anywhere.
+    ['nombre', 'telefono', 'email', 'mensaje'].forEach(field => {
+        form[field].value = form[field].value.trim();
+    });
+
+    if (looksLikeSpam(form)) {
+        btn.textContent = 'Error al enviar, intenta de nuevo';
+        btn.style.cssText += ';background:#8A2A2A;clip-path:none';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.cssText = originalStyle;
+        }, 4000);
+        return;
+    }
+
+    const lastSent = Number(localStorage.getItem('bformLastSent') || 0);
+    if (Date.now() - lastSent < 20000) {
+        btn.textContent = 'Espera unos segundos antes de reenviar';
+        btn.style.cssText += ';background:#8A2A2A;clip-path:none';
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.cssText = originalStyle;
+        }, 4000);
+        return;
+    }
+
     btn.disabled = true;
     btn.textContent = 'Enviando...';
     try {
@@ -438,6 +485,7 @@ document.getElementById('bform').addEventListener('submit', async e => {
         });
         const data = await res.json();
         if (data.success) {
+            localStorage.setItem('bformLastSent', String(Date.now()));
             btn.textContent = '¡Inscripción enviada! Te contactamos pronto.';
             btn.style.cssText += ';background:#2A6A2A;clip-path:none';
             form.reset();
