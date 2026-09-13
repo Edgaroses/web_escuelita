@@ -472,8 +472,10 @@ const igPosts = [
     'https://www.instagram.com/p/DQHo8ORDSca/',
     'https://www.instagram.com/p/DPyYqn6jYhf/',
     'https://www.instagram.com/p/DPyYqn6jYhf/',
-    'https://www.instagram.com/reel/DLbNcXuN83o/'
+    'https://www.instagram.com/reel/DLbNcXuN83o/',
+    'https://www.instagram.com/p/DKr5SVbO5JX/'
 ];
+const IG_POST_COUNT = 8;
 function shuffle(arr){
     const a = arr.slice();
     for(let i = a.length - 1; i > 0; i--){
@@ -484,7 +486,7 @@ function shuffle(arr){
 }
 const igGrid = document.getElementById('igGrid');
 const uniqueIgPosts = [...new Set(igPosts)];
-igGrid.innerHTML = shuffle(uniqueIgPosts).map(url =>
+igGrid.innerHTML = shuffle(uniqueIgPosts).slice(0, IG_POST_COUNT).map(url =>
     `<blockquote class="instagram-media" data-instgrm-permalink="${url}" data-instgrm-version="14"></blockquote>`
 ).join('');
 const igScript = document.createElement('script');
